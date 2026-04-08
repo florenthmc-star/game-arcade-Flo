@@ -45,10 +45,15 @@
             display: flex;
             justify-content: space-between;
             width: 450px;
-            font-size: 14px;
+            font-size: 11px;
             margin-bottom: 15px;
             color: #00FFFF;
             text-shadow: 0 0 5px #00FFFF;
+        }
+
+        .highlight-score {
+            color: #FFD700;
+            text-shadow: 0 0 5px #FFD700;
         }
 
         #game-container {
@@ -134,9 +139,10 @@
     
     <div id="game-wrapper">
         <div id="stats-board">
-            <span id="level-display">Niv: 1</span>
-            <span id="score-display">Score: 0</span>
-            <span id="dots-left">Gommes: 0</span>
+            <span id="level-display">Niv:1</span>
+            <span id="score-display">Sc:0</span>
+            <span id="highscore-display" class="highlight-score">Rec:0</span>
+            <span id="dots-left">Gom:0</span>
         </div>
         
         <div id="game-container">
@@ -165,15 +171,20 @@
 
         const TILE_SIZE = 30;
         
+        // Initialisation du Meilleur Score (depuis le navigateur)
+        let highScore = localStorage.getItem("pacmanNeonHighScore") || 0;
+        document.getElementById("highscore-display").innerText = "Rec:" + highScore;
+
         const levels = [
             {
+                // NIVEAU 1 : Labyrinthe classique, simple
                 map: [
                     "WWWWWWWWWWWWWWW",
                     "W......W......W",
-                    "W.WW.W.W.W.WW.W",
+                    "W.WWWW.W.WWWW.W",
                     "W.............W",
                     "W.WW.WWWWW.WW.W",
-                    "W......W......W",
+                    "W.............W",
                     "WWWW.W   W.WWWW",
                     "....... .......", 
                     "WWWW.WWWWW.WWWW",
@@ -187,25 +198,54 @@
                 pacSpeed: 2,
                 ghostSpeed: 1.5,
                 ghostSpawns: [
-                    { r: 6, c: 7, color: "#FF0000" },
-                    { r: 7, c: 7, color: "#00FFFF" } 
+                    { r: 6, c: 7, color: "#FF0000" }, // Rouge
+                    { r: 6, c: 6, color: "#00FFFF" }  // Cyan
                 ],
                 pacSpawn: { r: 13, c: 7 }
             },
             {
+                // NIVEAU 2 : Plus de recoins, 3 fantômes
                 map: [
                     "WWWWWWWWWWWWWWW",
                     "W.............W",
                     "W.WW.WWWWW.WW.W",
-                    "W.............W",
-                    "W.WW.W   W.WW.W",
-                    "W.WW.W   W.WW.W",
-                    "W.WW.WWWWW.WW.W",
-                    "...............", 
-                    "W.WWWW.W.WWWW.W",
+                    "W.W.........W.W",
+                    "W.W.WW.W.WW.W.W",
                     "W......W......W",
+                    "WWWW.W   W.WWWW",
+                    "....... .......", 
+                    "WWWW.WWWWW.WWWW",
+                    "W.............W",
+                    "W.WWWW.W.WWWW.W",
+                    "W...WW.W.WW...W",
+                    "W.W.WW...WW.W.W",
+                    "W.............W",
+                    "WWWWWWWWWWWWWWW"
+                ],
+                pacSpeed: 2.5,
+                ghostSpeed: 2,
+                ghostSpawns: [
+                    { r: 6, c: 7, color: "#FF0000" },
+                    { r: 6, c: 6, color: "#00FFFF" },
+                    { r: 6, c: 8, color: "#FF00FF" } // Rose
+                ],
+                pacSpawn: { r: 13, c: 7 }
+            },
+            {
+                // NIVEAU 3 : Labyrinthe très dense, 4 fantômes
+                map: [
+                    "WWWWWWWWWWWWWWW",
+                    "W...W.....W...W",
+                    "W.W.W.W.W.W.W.W",
+                    "W.W...W.W...W.W",
+                    "W.WWWWW.WWWWW.W",
+                    "W.............W",
+                    "WWWW.W   W.WWWW",
+                    "....... .......", 
+                    "WWWW.WWWWW.WWWW",
+                    "W.............W",
                     "W.WW.WWWWW.WW.W",
-                    "W.WW.......WW.W",
+                    "W..W.......W..W",
                     "W.WW.WWWWW.WW.W",
                     "W.............W",
                     "WWWWWWWWWWWWWWW"
@@ -213,9 +253,10 @@
                 pacSpeed: 2.5,
                 ghostSpeed: 2,
                 ghostSpawns: [
-                    { r: 4, c: 7, color: "#FF0000" },
-                    { r: 5, c: 6, color: "#00FFFF" },
-                    { r: 5, c: 8, color: "#FF00FF" } 
+                    { r: 6, c: 7, color: "#FF0000" },
+                    { r: 6, c: 6, color: "#00FFFF" },
+                    { r: 6, c: 8, color: "#FF00FF" },
+                    { r: 6, c: 7, color: "#FFA500" } // Orange
                 ],
                 pacSpawn: { r: 13, c: 7 }
             }
@@ -395,15 +436,25 @@
             });
         }
 
+        function updateHighScore() {
+            let total = globalScore + score;
+            if (total > highScore) {
+                highScore = total;
+                localStorage.setItem("pacmanNeonHighScore", highScore);
+                document.getElementById("highscore-display").innerText = "Rec:" + highScore;
+            }
+        }
+
         function updateUI() {
-            document.getElementById("level-display").innerText = "Niv: " + (currentLevel + 1);
-            document.getElementById("score-display").innerText = "Score: " + (globalScore + score);
+            document.getElementById("level-display").innerText = "Niv:" + (currentLevel + 1);
+            document.getElementById("score-display").innerText = "Sc:" + (globalScore + score);
             let remaining = dots.filter(d => !d.eaten).length;
-            document.getElementById("dots-left").innerText = "Gommes: " + remaining;
+            document.getElementById("dots-left").innerText = "Gom:" + remaining;
         }
 
         function showMessage(msg, color, btnText) {
             gameOver = true;
+            updateHighScore(); // Sauvegarder le score à la fin
             overlay.style.display = "flex";
             messageEl.innerHTML = msg;
             messageEl.style.color = color;

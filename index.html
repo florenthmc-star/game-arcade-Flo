@@ -10,7 +10,6 @@
         body {
             background-color: #050505;
             color: #fff;
-            /* Police rétro par défaut, bascule sur Courier si non disponible */
             font-family: 'Press Start 2P', 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
@@ -79,7 +78,7 @@
         }
 
         #message {
-            font-size: 28px;
+            font-size: 20px;
             margin-bottom: 30px;
             text-align: center;
             line-height: 1.5;
@@ -168,7 +167,6 @@
         
         const levels = [
             {
-                // NIVEAU 1
                 map: [
                     "WWWWWWWWWWWWWWW",
                     "W......W......W",
@@ -189,13 +187,12 @@
                 pacSpeed: 2,
                 ghostSpeed: 1.5,
                 ghostSpawns: [
-                    { r: 6, c: 7, color: "#FF0000" }, // Rouge néon
-                    { r: 7, c: 7, color: "#00FFFF" }  // Cyan néon
+                    { r: 6, c: 7, color: "#FF0000" },
+                    { r: 7, c: 7, color: "#00FFFF" } 
                 ],
                 pacSpawn: { r: 13, c: 7 }
             },
             {
-                // NIVEAU 2
                 map: [
                     "WWWWWWWWWWWWWWW",
                     "W.............W",
@@ -218,7 +215,7 @@
                 ghostSpawns: [
                     { r: 4, c: 7, color: "#FF0000" },
                     { r: 5, c: 6, color: "#00FFFF" },
-                    { r: 5, c: 8, color: "#FF00FF" } // Rose/Magenta néon
+                    { r: 5, c: 8, color: "#FF00FF" } 
                 ],
                 pacSpawn: { r: 13, c: 7 }
             }
@@ -311,12 +308,11 @@
                 ctx.strokeStyle = "#0066FF";
                 ctx.lineWidth = 2;
                 ctx.strokeRect(w.x + 2, w.y + 2, w.w - 4, w.h - 4);
-                // Remplissage léger pour faire ressortir les murs
                 ctx.fillStyle = "rgba(0, 50, 150, 0.1)";
                 ctx.fillRect(w.x + 2, w.y + 2, w.w - 4, w.h - 4);
             });
             
-            ctx.shadowBlur = 0; // Reset pour ne pas faire lagger
+            ctx.shadowBlur = 0; 
         }
 
         function drawDots() {
@@ -369,7 +365,6 @@
                 
                 ctx.beginPath();
                 ctx.arc(ghost.x, ghost.y, ghost.radius, Math.PI, 0); 
-                // Jupe du fantôme
                 ctx.lineTo(ghost.x + ghost.radius, ghost.y + ghost.radius + 2);
                 ctx.lineTo(ghost.x + ghost.radius / 3, ghost.y + ghost.radius - 2);
                 ctx.lineTo(ghost.x - ghost.radius / 3, ghost.y + ghost.radius + 2);
@@ -379,16 +374,14 @@
                 ctx.fill();
                 ctx.closePath();
                 
-                ctx.shadowBlur = 0; // Pas de néon sur les yeux
+                ctx.shadowBlur = 0;
 
-                // Yeux
                 ctx.beginPath();
                 ctx.arc(ghost.x - 4, ghost.y - 3, 3, 0, Math.PI * 2);
                 ctx.arc(ghost.x + 4, ghost.y - 3, 3, 0, Math.PI * 2);
                 ctx.fillStyle = "white";
                 ctx.fill();
                 
-                // Pupilles (regardent dans la direction du mouvement si possible)
                 let pupilleX = ghost.dx > 0 ? 1 : (ghost.dx < 0 ? -1 : 0);
                 let pupilleY = ghost.dy > 0 ? 1 : (ghost.dy < 0 ? -1 : 0);
                 
@@ -417,7 +410,6 @@
             messageEl.style.textShadow = `0 0 15px ${color}`;
             btnEl.innerText = btnText;
             
-            // Adapter la couleur du bouton
             btnEl.style.color = color;
             btnEl.style.borderColor = color;
             btnEl.style.boxShadow = `0 0 10px ${color}, inset 0 0 10px ${color}`;
@@ -452,7 +444,6 @@
             if (gameOver) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Mouvement Pac-Man
             if (!checkWallCollision(pacman.x + pacman.nextDx, pacman.y + pacman.nextDy, pacman.radius)) {
                 pacman.dx = pacman.nextDx;
                 pacman.dy = pacman.nextDy;
@@ -463,11 +454,9 @@
                 pacman.y += pacman.dy;
             }
 
-            // Tunnel
             if (pacman.x < -pacman.radius) pacman.x = canvas.width + pacman.radius;
             if (pacman.x > canvas.width + pacman.radius) pacman.x = -pacman.radius;
 
-            // IA Fantômes (Idem version précédente)
             let mapData = levels[currentLevel].map;
 
             ghosts.forEach(ghost => {
@@ -512,7 +501,6 @@
                             validMoves.push({dx: -ghost.dx, dy: -ghost.dy});
                         }
 
-                        // Le fantôme rouge traque, les autres sont aléatoires ou semi-aléatoires
                         if (ghost.color === "#FF0000" || (ghost.color === "#FF00FF" && Math.random() > 0.4)) {
                             validMoves.sort((a, b) => {
                                 let distA = Math.hypot((ghost.x + a.gx*TILE_SIZE) - pacman.x, (ghost.y + a.gy*TILE_SIZE) - pacman.y);
@@ -536,13 +524,11 @@
                 if (ghost.x < -ghost.radius) ghost.x = canvas.width + ghost.radius;
                 if (ghost.x > canvas.width + ghost.radius) ghost.x = -ghost.radius;
 
-                // Game Over
                 if (Math.hypot(pacman.x - ghost.x, pacman.y - ghost.y) < pacman.radius + ghost.radius - 4) {
-                    showMessage("AIE AIE AIE...<br>GAME OVER", "#FF0000", "RECOMMENCER");
+                    showMessage("TU ES ÉCLATÉ AU SOL !!<br>GAME OVER", "#FF0000", "RECOMMENCER");
                 }
             });
 
-            // Manger Gommes
             let dotsRemaining = 0;
             dots.forEach(dot => {
                 if (!dot.eaten) {
@@ -555,7 +541,6 @@
                 }
             });
 
-            // Victoire
             if (dotsRemaining === 0 && !gameOver) {
                 if (currentLevel < levels.length - 1) {
                     showMessage("BIEN JOUÉ !<br>PRÊT POUR LA SUITE ?", "#00FF00", "NIVEAU SUIVANT");

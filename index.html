@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Mini Pac-Man - Néon Édition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            background-color: #050505;
+            color: #fff;
+            /* Police rétro par défaut, bascule sur Courier si non disponible */
+            font-family: 'Press Start 2P', 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        h1 {
+            color: #FFD700;
+            text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        #game-wrapper {
+            padding: 10px;
+            border: 2px solid #00FFFF;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(0, 255, 255, 0.2);
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        #stats-board {
+            display: flex;
+            justify-content: space-between;
+            width: 450px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #00FFFF;
+            text-shadow: 0 0 5px #00FFFF;
+        }
+
+        #game-container {
+            position: relative;
+        }
+
+        canvas {
+            background-color: #000;
+            display: block;
+            border-radius: 5px;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            display: none;
+            z-index: 10;
+        }
+
+        #message {
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        button {
+            background-color: transparent;
+            color: #FFD700;
+            border: 2px solid #FFD700;
+            box-shadow: 0 0 10px #FFD700, inset 0 0 10px #FFD700;
+            padding: 15px 30px;
+            font-size: 14px;
+            font-family: 'Press Start 2P', 'Courier New', Courier, monospace;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: #FFD700;
+            color: #000;
+            box-shadow: 0 0 20px #FFD700, inset 0 0 20px #FFD700;
+            transform: scale(1.05);
+        }
+
+        .instructions {
+            color: #888;
+            margin-top: 25px;
+            font-size: 10px;
+            text-align: center;
+            line-height: 1.8;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .instructions span {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #00FFFF;
+            text-shadow: 0 0 5px #00FFFF;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ARCADE RETRO</h1>
+    
+    <div id="game-wrapper">
+        <div id="stats-board">
+            <span id="level-display">Niv: 1</span>
+            <span id="score-display">Score: 0</span>
+            <span id="dots-left">Gommes: 0</span>
+        </div>
+        
+        <div id="game-container">
+            <canvas id="gameCanvas" width="450" height="450"></canvas>
+            <div id="overlay">
+                <div id="message">GAME OVER</div>
+                <button id="action-btn" onclick="handleButtonClick()">REJOUER</button>
+            </div>
+        </div>
+    </div>
+    
+    <p class="instructions">
+        Mange toutes les gommes pour passer au niveau supérieur.<br>
+        Utilise les <span>FLÈCHES DU CLAVIER</span> pour guider ton héros.<br>
+        Fuis les fantômes !
+    </p>
+
+    <footer>© 2026 Florent Amendola</footer>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const overlay = document.getElementById("overlay");
+        const messageEl = document.getElementById("message");
+        const btnEl = document.getElementById("action-btn");
+
+        const TILE_SIZE = 30;
+        
+        const levels = [
+            {
+                // NIVEAU 1
+                map: [
+                    "WWWWWWWWWWWWWWW",
+                    "W......W......W",
+                    "W.WW.W.W.W.WW.W",
+                    "W.............W",
+                    "W.WW.WWWWW.WW.W",
+                    "W......W......W",
+                    "WWWW.W   W.WWWW",
+                    "....... .......", 
+                    "WWWW.WWWWW.WWWW",
+                    "W.............W",
+                    "W.WW.W.W.W.WW.W",
+                    "W......W......W",
+                    "W.WWWWWWWWW.W.W",
+                    "W.............W",
+                    "WWWWWWWWWWWWWWW"
+                ],
+                pacSpeed: 2,
+                ghostSpeed: 1.5,
+                ghostSpawns: [
+                    { r: 6, c: 7, color: "#FF0000" }, // Rouge néon
+                    { r: 7, c: 7, color: "#00FFFF" }  // Cyan néon
+                ],
+                pacSpawn: { r: 13, c: 7 }
+            },
+            {
+                // NIVEAU 2
+                map: [
+                    "WWWWWWWWWWWWWWW",
+                    "W.............W",
+                    "W.WW.WWWWW.WW.W",
+                    "W.............W",
+                    "W.WW.W   W.WW.W",
+                    "W.WW.W   W.WW.W",
+                    "W.WW.WWWWW.WW.W",
+                    "...............", 
+                    "W.WWWW.W.WWWW.W",
+                    "W......W......W",
+                    "W.WW.WWWWW.WW.W",
+                    "W.WW.......WW.W",
+                    "W.WW.WWWWW.WW.W",
+                    "W.............W",
+                    "WWWWWWWWWWWWWWW"
+                ],
+                pacSpeed: 2.5,
+                ghostSpeed: 2,
+                ghostSpawns: [
+                    { r: 4, c: 7, color: "#FF0000" },
+                    { r: 5, c: 6, color: "#00FFFF" },
+                    { r: 5, c: 8, color: "#FF00FF" } // Rose/Magenta néon
+                ],
+                pacSpawn: { r: 13, c: 7 }
+            }
+        ];
+
+        let currentLevel = 0;
+        let score = 0;
+        let globalScore = 0;
+        let gameOver = false;
+        let animationId;
+
+        let walls = [];
+        let dots = [];
+        let ghosts = [];
+        let pacman = {};
+
+        function loadLevel(index) {
+            let levelData = levels[index];
+            walls = [];
+            dots = [];
+            ghosts = [];
+            
+            for (let r = 0; r < levelData.map.length; r++) {
+                for (let c = 0; c < levelData.map[r].length; c++) {
+                    let tile = levelData.map[r][c];
+                    let x = c * TILE_SIZE;
+                    let y = r * TILE_SIZE;
+                    
+                    if (tile === 'W') {
+                        walls.push({ x: x, y: y, w: TILE_SIZE, h: TILE_SIZE });
+                    } else if (tile === '.') {
+                        dots.push({ x: x + TILE_SIZE/2, y: y + TILE_SIZE/2, radius: 4, eaten: false });
+                    }
+                }
+            }
+
+            pacman = {
+                x: levelData.pacSpawn.c * TILE_SIZE + TILE_SIZE/2,
+                y: levelData.pacSpawn.r * TILE_SIZE + TILE_SIZE/2,
+                radius: 11,
+                speed: levelData.pacSpeed,
+                dx: 0, dy: 0, 
+                nextDx: 0, nextDy: 0,
+                rotation: 0, nextRot: 0,
+                mouthOffset: 0.2, mouthDir: 1
+            };
+
+            levelData.ghostSpawns.forEach(g => {
+                ghosts.push({
+                    x: g.c * TILE_SIZE + TILE_SIZE/2,
+                    y: g.r * TILE_SIZE + TILE_SIZE/2,
+                    radius: 11,
+                    speed: levelData.ghostSpeed,
+                    dx: levelData.ghostSpeed, dy: 0,
+                    color: g.color,
+                    atIntersection: false
+                });
+            });
+
+            gameOver = false;
+            overlay.style.display = "none";
+            updateUI();
+        }
+
+        function checkWallCollision(x, y, radius) {
+            let margin = 5; 
+            for (let w of walls) {
+                let pacLeft = x - radius + margin;
+                let pacRight = x + radius - margin;
+                let pacTop = y - radius + margin;
+                let pacBottom = y + radius - margin;
+                
+                let wallLeft = w.x;
+                let wallRight = w.x + w.w;
+                let wallTop = w.y;
+                let wallBottom = w.y + w.h;
+                
+                if (pacLeft < wallRight && pacRight > wallLeft && pacTop < wallBottom && pacBottom > wallTop) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function drawLabyrinth() {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#0044FF";
+            
+            walls.forEach(w => {
+                ctx.strokeStyle = "#0066FF";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(w.x + 2, w.y + 2, w.w - 4, w.h - 4);
+                // Remplissage léger pour faire ressortir les murs
+                ctx.fillStyle = "rgba(0, 50, 150, 0.1)";
+                ctx.fillRect(w.x + 2, w.y + 2, w.w - 4, w.h - 4);
+            });
+            
+            ctx.shadowBlur = 0; // Reset pour ne pas faire lagger
+        }
+
+        function drawDots() {
+            dots.forEach(dot => {
+                if (!dot.eaten) {
+                    ctx.beginPath();
+                    ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = "#FFF";
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = "#FFB8AE";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function drawPacman() {
+            if (pacman.dx !== 0 || pacman.dy !== 0) {
+                pacman.mouthOffset += 0.02 * pacman.mouthDir;
+                if (pacman.mouthOffset >= 0.25 || pacman.mouthOffset <= 0.01) {
+                    pacman.mouthDir *= -1;
+                }
+            }
+
+            ctx.save();
+            ctx.translate(pacman.x, pacman.y);
+            ctx.rotate(pacman.rotation);
+            ctx.beginPath();
+            ctx.arc(0, 0, pacman.radius, pacman.mouthOffset * Math.PI, (2 - pacman.mouthOffset) * Math.PI);
+            ctx.lineTo(0, 0);
+            
+            ctx.fillStyle = "#FFD700";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#FFD700";
+            
+            ctx.fill();
+            ctx.closePath();
+            ctx.restore();
+            
+            ctx.shadowBlur = 0;
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.save();
+                
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = ghost.color;
+                
+                ctx.beginPath();
+                ctx.arc(ghost.x, ghost.y, ghost.radius, Math.PI, 0); 
+                // Jupe du fantôme
+                ctx.lineTo(ghost.x + ghost.radius, ghost.y + ghost.radius + 2);
+                ctx.lineTo(ghost.x + ghost.radius / 3, ghost.y + ghost.radius - 2);
+                ctx.lineTo(ghost.x - ghost.radius / 3, ghost.y + ghost.radius + 2);
+                ctx.lineTo(ghost.x - ghost.radius, ghost.y + ghost.radius - 2);
+                
+                ctx.fillStyle = ghost.color;
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.shadowBlur = 0; // Pas de néon sur les yeux
+
+                // Yeux
+                ctx.beginPath();
+                ctx.arc(ghost.x - 4, ghost.y - 3, 3, 0, Math.PI * 2);
+                ctx.arc(ghost.x + 4, ghost.y - 3, 3, 0, Math.PI * 2);
+                ctx.fillStyle = "white";
+                ctx.fill();
+                
+                // Pupilles (regardent dans la direction du mouvement si possible)
+                let pupilleX = ghost.dx > 0 ? 1 : (ghost.dx < 0 ? -1 : 0);
+                let pupilleY = ghost.dy > 0 ? 1 : (ghost.dy < 0 ? -1 : 0);
+                
+                ctx.beginPath();
+                ctx.arc(ghost.x - 4 + pupilleX, ghost.y - 3 + pupilleY, 1.5, 0, Math.PI * 2);
+                ctx.arc(ghost.x + 4 + pupilleX, ghost.y - 3 + pupilleY, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = "#0000AA";
+                ctx.fill();
+                
+                ctx.restore();
+            });
+        }
+
+        function updateUI() {
+            document.getElementById("level-display").innerText = "Niv: " + (currentLevel + 1);
+            document.getElementById("score-display").innerText = "Score: " + (globalScore + score);
+            let remaining = dots.filter(d => !d.eaten).length;
+            document.getElementById("dots-left").innerText = "Gommes: " + remaining;
+        }
+
+        function showMessage(msg, color, btnText) {
+            gameOver = true;
+            overlay.style.display = "flex";
+            messageEl.innerHTML = msg;
+            messageEl.style.color = color;
+            messageEl.style.textShadow = `0 0 15px ${color}`;
+            btnEl.innerText = btnText;
+            
+            // Adapter la couleur du bouton
+            btnEl.style.color = color;
+            btnEl.style.borderColor = color;
+            btnEl.style.boxShadow = `0 0 10px ${color}, inset 0 0 10px ${color}`;
+            
+            btnEl.onmouseover = function() {
+                this.style.backgroundColor = color;
+                this.style.color = "#000";
+            }
+            btnEl.onmouseout = function() {
+                this.style.backgroundColor = "transparent";
+                this.style.color = color;
+            }
+        }
+
+        function handleButtonClick() {
+            if (btnEl.innerText === "NIVEAU SUIVANT") {
+                currentLevel++;
+                globalScore += score;
+                score = 0;
+                loadLevel(currentLevel);
+                update();
+            } else {
+                currentLevel = 0;
+                globalScore = 0;
+                score = 0;
+                loadLevel(currentLevel);
+                update();
+            }
+        }
+
+        function update() {
+            if (gameOver) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Mouvement Pac-Man
+            if (!checkWallCollision(pacman.x + pacman.nextDx, pacman.y + pacman.nextDy, pacman.radius)) {
+                pacman.dx = pacman.nextDx;
+                pacman.dy = pacman.nextDy;
+                pacman.rotation = pacman.nextRot;
+            }
+            if (!checkWallCollision(pacman.x + pacman.dx, pacman.y + pacman.dy, pacman.radius)) {
+                pacman.x += pacman.dx;
+                pacman.y += pacman.dy;
+            }
+
+            // Tunnel
+            if (pacman.x < -pacman.radius) pacman.x = canvas.width + pacman.radius;
+            if (pacman.x > canvas.width + pacman.radius) pacman.x = -pacman.radius;
+
+            // IA Fantômes (Idem version précédente)
+            let mapData = levels[currentLevel].map;
+
+            ghosts.forEach(ghost => {
+                let gridX = Math.floor(ghost.x / TILE_SIZE);
+                let gridY = Math.floor(ghost.y / TILE_SIZE);
+                let centerX = gridX * TILE_SIZE + TILE_SIZE / 2;
+                let centerY = gridY * TILE_SIZE + TILE_SIZE / 2;
+                let distToCenter = Math.hypot(ghost.x - centerX, ghost.y - centerY);
+
+                if (distToCenter <= ghost.speed) {
+                    if (!ghost.atIntersection) {
+                        ghost.atIntersection = true;
+                        ghost.x = centerX; 
+                        ghost.y = centerY;
+
+                        let validMoves = [];
+                        let directions = [
+                            {dx: ghost.speed, dy: 0, gx: 1, gy: 0},
+                            {dx: -ghost.speed, dy: 0, gx: -1, gy: 0},
+                            {dx: 0, dy: ghost.speed, gx: 0, gy: 1},
+                            {dx: 0, dy: -ghost.speed, gx: 0, gy: -1}
+                        ];
+
+                        for (let d of directions) {
+                            if (ghost.dx !== 0 && d.dx === -ghost.dx) continue;
+                            if (ghost.dy !== 0 && d.dy === -ghost.dy) continue;
+
+                            let checkX = gridX + d.gx;
+                            let checkY = gridY + d.gy;
+                            
+                            if (checkX < 0) checkX = mapData[0].length - 1;
+                            if (checkX >= mapData[0].length) checkX = 0;
+
+                            if (checkY >= 0 && checkY < mapData.length) {
+                                if (mapData[checkY][checkX] !== 'W') {
+                                    validMoves.push(d); 
+                                }
+                            }
+                        }
+
+                        if (validMoves.length === 0) {
+                            validMoves.push({dx: -ghost.dx, dy: -ghost.dy});
+                        }
+
+                        // Le fantôme rouge traque, les autres sont aléatoires ou semi-aléatoires
+                        if (ghost.color === "#FF0000" || (ghost.color === "#FF00FF" && Math.random() > 0.4)) {
+                            validMoves.sort((a, b) => {
+                                let distA = Math.hypot((ghost.x + a.gx*TILE_SIZE) - pacman.x, (ghost.y + a.gy*TILE_SIZE) - pacman.y);
+                                let distB = Math.hypot((ghost.x + b.gx*TILE_SIZE) - pacman.x, (ghost.y + b.gy*TILE_SIZE) - pacman.y);
+                                return distA - distB;
+                            });
+                        } else {
+                            validMoves.sort(() => Math.random() - 0.5);
+                        }
+
+                        ghost.dx = validMoves[0].dx;
+                        ghost.dy = validMoves[0].dy;
+                    }
+                } else {
+                    ghost.atIntersection = false;
+                }
+                
+                ghost.x += ghost.dx;
+                ghost.y += ghost.dy;
+
+                if (ghost.x < -ghost.radius) ghost.x = canvas.width + ghost.radius;
+                if (ghost.x > canvas.width + ghost.radius) ghost.x = -ghost.radius;
+
+                // Game Over
+                if (Math.hypot(pacman.x - ghost.x, pacman.y - ghost.y) < pacman.radius + ghost.radius - 4) {
+                    showMessage("AIE AIE AIE...<br>GAME OVER", "#FF0000", "RECOMMENCER");
+                }
+            });
+
+            // Manger Gommes
+            let dotsRemaining = 0;
+            dots.forEach(dot => {
+                if (!dot.eaten) {
+                    dotsRemaining++;
+                    if (Math.hypot(pacman.x - dot.x, pacman.y - dot.y) < pacman.radius + dot.radius) {
+                        dot.eaten = true;
+                        score += 10;
+                        updateUI();
+                    }
+                }
+            });
+
+            // Victoire
+            if (dotsRemaining === 0 && !gameOver) {
+                if (currentLevel < levels.length - 1) {
+                    showMessage("BIEN JOUÉ !<br>PRÊT POUR LA SUITE ?", "#00FF00", "NIVEAU SUIVANT");
+                } else {
+                    showMessage("CHAMPION !<br>VICTOIRE TOTALE !", "#FFD700", "REJOUER");
+                }
+            }
+
+            drawLabyrinth();
+            drawDots();
+            drawGhosts();
+            drawPacman();
+
+            if (!gameOver) {
+                animationId = requestAnimationFrame(update);
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight") { pacman.nextDx = pacman.speed; pacman.nextDy = 0; pacman.nextRot = 0; }
+            if (e.key === "ArrowLeft") { pacman.nextDx = -pacman.speed; pacman.nextDy = 0; pacman.nextRot = Math.PI; }
+            if (e.key === "ArrowUp") { pacman.nextDx = 0; pacman.nextDy = -pacman.speed; pacman.nextRot = -Math.PI / 2; }
+            if (e.key === "ArrowDown") { pacman.nextDx = 0; pacman.nextDy = pacman.speed; pacman.nextRot = Math.PI / 2; }
+            
+            if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight", " "].indexOf(e.key) > -1) {
+                e.preventDefault();
+            }
+        });
+
+        loadLevel(0);
+        update();
+    </script>
+</body>
+</html>
